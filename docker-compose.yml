@@ -1,0 +1,67 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:13
+    container_name: login_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin234
+      POSTGRES_DB: login
+    ports:
+      - "5462:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro   # <- runs once on fresh volume
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      retries: 5
+
+  backend:
+    build: ./Backend
+    container_name: login_backend
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: admin234
+      DB_NAME: login
+      PORT: 3103
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3103:3103"
+    restart: unless-stopped
+
+  forgot:
+    build: ./Forgot
+    container_name: login_forgot
+    ports:
+      - "7019:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  login:
+    build: ./Login
+    container_name: login_frontend
+    ports:
+      - "7020:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  sign_up:
+    build: ./Sign_Up
+    container_name: login_signup
+    ports:
+      - "7021:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  db_data:
+
